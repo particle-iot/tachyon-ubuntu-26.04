@@ -56,7 +56,7 @@ patch /usr/share/livecd-rootfs/live-build/ubuntu-cpc/hooks.d/base/disk-image-uef
 
 patch /usr/share/livecd-rootfs/live-build/functions $DIR/stuff/functions.patch
 
-mkdir build
+mkdir -p build
 cd build
 
 cp -r "$(dpkg -L livecd-rootfs | grep "auto$")" auto

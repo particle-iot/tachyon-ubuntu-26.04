@@ -18,8 +18,13 @@ VARIANT="${1:?usage: build.sh <headless|desktop>}"
 
 DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")/..")
 
+# -v /dev:/dev shares the host devtmpfs so loop partition nodes (/dev/loopXpN)
+# created by `losetup -P` inside the disk-image hooks actually appear in the
+# container — the container's own /dev is static and has no udev. Same pattern
+# tachyon-composer's DOCKER_RUN uses.
 docker run --rm --privileged \
     -v "${DIR}:/repo" \
+    -v /dev:/dev \
     -w /repo \
     ${APT_MIRROR:+-e APT_MIRROR="${APT_MIRROR}"} \
     ubuntu:26.04 \
