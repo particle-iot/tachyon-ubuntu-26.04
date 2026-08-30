@@ -26,6 +26,12 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      # Publishing gate (bring-up default: OFF). While 'false', CI only proves
+      # the build: no S3 uploads, no metadata, no publish job. Set the repo
+      # variable UPLOAD_ASSETS='true' to enable uploads; GHA_CREATE_RELEASE
+      # separately gates GitHub release creation.
+      UPLOAD_ASSETS: ${{ vars.UPLOAD_ASSETS || 'false' }}
     strategy:
       fail-fast: false
       matrix:
@@ -72,6 +78,7 @@ jobs:
           bash ci-scripts/build.sh "${{ matrix.variant }}"
 
       - name: Configure AWS credentials
+        if: env.UPLOAD_ASSETS == 'true'
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -79,6 +86,7 @@ jobs:
           role-session-name: tachyon-2604-${{ matrix.variant }}-${{ github.run_id }}
 
       - name: Upload image to S3 and write metadata
+        if: env.UPLOAD_ASSETS == 'true'
         env:
           S3_BUCKET: ${{ secrets.LINUX_DIST_S3_BUCKET }}
           CLOUDFRONT_URL: https://linux-dist.particle.io
@@ -104,6 +112,7 @@ jobs:
             > "release-metadata/${VARIANT}_metadata.json"
 
       - name: Upload metadata artifact
+        if: env.UPLOAD_ASSETS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: release-metadata-${{ matrix.variant }}
@@ -112,6 +121,9 @@ jobs:
 
   publish:
     needs: build
+    # Skipped entirely while the UPLOAD_ASSETS repo var is not 'true' (no
+    # metadata artifacts exist to assemble in that case).
+    if: needs.build.result == 'success' && vars.UPLOAD_ASSETS == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
