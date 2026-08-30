@@ -1,5 +1,5 @@
---- livecd-rootfs/live-build/ubuntu-cpc/hooks.d/chroot/999-ubuntu-image-customization.chroot.orig	2025-08-25 19:48:55.910622084 +0000
-+++ livecd-rootfs/live-build/ubuntu-cpc/hooks.d/chroot/999-ubuntu-image-customization.chroot	2025-08-25 19:53:12.449601804 +0000
+--- /usr/share/livecd-rootfs/live-build/ubuntu-cpc/hooks.d/chroot/999-ubuntu-image-customization.chroot.orig
++++ /usr/share/livecd-rootfs/live-build/ubuntu-cpc/hooks.d/chroot/999-ubuntu-image-customization.chroot
 @@ -8,7 +8,7 @@
  # special cloud-init configuration that should not be happening for cloud
  # cases. This check should be changed to a per-MODEL/per-SUBARCH check once

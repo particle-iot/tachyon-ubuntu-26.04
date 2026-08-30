@@ -1,8 +1,0 @@
-#!/bin/sh -e
-
-if [ "$1" = "prereqs" ]; then exit 0; fi
-
-. /usr/share/initramfs-tools/hook-functions
-
-copy_file firmware /lib/firmware/qupv3fw.elf
-

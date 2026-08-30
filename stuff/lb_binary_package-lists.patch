@@ -1,5 +1,5 @@
---- /usr/lib/live/build/lb_binary_package-lists.orig	2025-08-02 19:03:23.135733322 +0000
-+++ /usr/lib/live/build/lb_binary_package-lists	2025-08-03 09:24:34.560561075 +0000
+--- /usr/lib/live/build/lb_binary_package-lists.orig
++++ /usr/lib/live/build/lb_binary_package-lists
 @@ -88,8 +88,13 @@
  			# Generate package list
  			Expand_packagelist "${LIST}" "config/package-lists" > chroot/root/"$(basename ${LIST})"

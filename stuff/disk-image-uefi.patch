@@ -1,5 +1,5 @@
---- /usr/share/livecd-rootfs/live-build/ubuntu-cpc/hooks.d/base/disk-image-uefi.binary.orig	2025-11-11 16:39:53.327987210 +0000
-+++ /usr/share/livecd-rootfs/live-build/ubuntu-cpc/hooks.d/base/disk-image-uefi.binary	2025-11-11 16:40:53.673059712 +0000
+--- /usr/share/livecd-rootfs/live-build/ubuntu-cpc/hooks.d/base/disk-image-uefi.binary.orig
++++ /usr/share/livecd-rootfs/live-build/ubuntu-cpc/hooks.d/base/disk-image-uefi.binary
 @@ -14,11 +14,11 @@
  
  case "$ARCH" in

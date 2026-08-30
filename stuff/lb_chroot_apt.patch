@@ -1,14 +1,14 @@
---- /usr/lib/live/build/lb_chroot_apt.orig	2025-08-02 11:24:28.326920908 +0000
-+++ /usr/lib/live/build/lb_chroot_apt	2025-08-02 11:26:08.529755583 +0000
-@@ -48,6 +48,8 @@
+--- /usr/lib/live/build/lb_chroot_apt.orig
++++ /usr/lib/live/build/lb_chroot_apt
+@@ -47,6 +47,8 @@
+ 		then
  			echo "Acquire::ftp::Proxy \"${LB_APT_FTP_PROXY}\";" > chroot/etc/apt/apt.conf.d/00ftp-proxy
  		fi
- 
-+		echo 'Acquire::Retries "20";' > chroot/etc/apt/apt.conf.d/99retries
 +
++		echo 'Acquire::Retries "20";' > chroot/etc/apt/apt.conf.d/99retries
+ 
  		# Configuring apt http proxy
  		if [ -n "${LB_APT_HTTP_PROXY}" ]
- 		then
 @@ -237,6 +239,8 @@
  		# Deconfiguring aptitude ftp proxy
  		rm -f chroot/etc/apt/apt.conf.d/00ftp-proxy

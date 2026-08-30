@@ -1,14 +1,13 @@
---- /usr/share/livecd-rootfs/minimize-manual.orig	2025-08-02 08:22:19.395470521 +0000
-+++ /usr/share/livecd-rootfs/minimize-manual	2025-08-02 08:21:53.833850876 +0000
-@@ -13,4 +13,10 @@
+--- /usr/share/livecd-rootfs/minimize-manual.orig
++++ /usr/share/livecd-rootfs/minimize-manual
+@@ -15,4 +15,9 @@
  if [ -n "$auto_packages" ]; then
  	chroot $chroot_directory apt-mark auto $auto_packages
  fi
--[ -z "$(/usr/share/livecd-rootfs/auto-markable-pkgs $chroot_directory 2> /dev/null)" ]
-+markable="$(/usr/share/livecd-rootfs/auto-markable-pkgs $chroot_directory 2> /dev/null)"
+-[ -z "$(${LIVECD_ROOTFS_ROOT}/auto-markable-pkgs $chroot_directory 2> /dev/null)" ]
++markable="$(${LIVECD_ROOTFS_ROOT}/auto-markable-pkgs $chroot_directory 2> /dev/null)"
 +if [ ! -z "$markable" ]; then
 +	echo "FIXME FIXME: Some packages are still for some reason not marked as auto: $markable"
 +fi
 +
 +exit 0
-+

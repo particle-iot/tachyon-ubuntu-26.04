@@ -1,0 +1,173 @@
+name: Build Ubuntu 26.04
+
+# Sole CI for this repo (ported from tachyon-ubuntu-24.04's GHA pipeline; no
+# CircleCI here). Builds + uploads images on every push/PR; cuts a GitHub
+# release on main/tags when the repo variable GHA_CREATE_RELEASE == 'true'.
+#
+# The build itself runs inside a privileged ubuntu:26.04 container (see
+# ci-scripts/build.sh) so the runner's own distro does not need to be 26.04.
+
+on:
+  push:
+    branches: [main]
+    tags: ['**']
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-tachyon
+    timeout-minutes: 120
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [headless, desktop]
+    outputs:
+      release_tag: ${{ steps.meta.outputs.release_tag }}
+      base_path: ${{ steps.meta.outputs.base_path }}
+      is_release: ${{ steps.meta.outputs.is_release }}
+    steps:
+      - name: Free up disk space
+        run: |
+          df -h || true
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache || true
+          df -h || true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need full history for `git rev-list --count`
+
+      - name: Determine release metadata
+        id: meta
+        env:
+          GH_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [[ "$GH_REF" == "refs/heads/main" || "$GH_REF" == refs/tags/* ]]; then
+            RELEASE_TAG="image-$(git rev-list --count HEAD)-$(git rev-parse --short HEAD)"
+            BASE_PATH="release"
+            IS_RELEASE="true"
+          else
+            RELEASE_TAG="pre-$(git rev-parse --short HEAD)"
+            BASE_PATH="prerelease"
+            IS_RELEASE="false"
+          fi
+          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "base_path=${BASE_PATH}"     >> "$GITHUB_OUTPUT"
+          echo "is_release=${IS_RELEASE}"   >> "$GITHUB_OUTPUT"
+          echo "Resolved: tag=${RELEASE_TAG} base=${BASE_PATH} release=${IS_RELEASE}"
+
+      - name: Build rootfs
+        run: |
+          set -euo pipefail
+          bash ci-scripts/build.sh "${{ matrix.variant }}"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: tachyon-2604-${{ matrix.variant }}-${{ github.run_id }}
+
+      - name: Upload image to S3 and write metadata
+        env:
+          S3_BUCKET: ${{ secrets.LINUX_DIST_S3_BUCKET }}
+          CLOUDFRONT_URL: https://linux-dist.particle.io
+          RELEASE_TAG: ${{ steps.meta.outputs.release_tag }}
+          BASE_PATH: ${{ steps.meta.outputs.base_path }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+          RELEASE_NAME="tachyon-ubuntu-26.04-${VARIANT}-${RELEASE_TAG}.img.xz"
+          ARTIFACT_PATH="${BASE_PATH}/${RELEASE_NAME}"
+
+          aws s3 cp build/rootfs.img.xz "s3://${S3_BUCKET}/${ARTIFACT_PATH}" --only-show-errors
+          ARTIFACT_URL="${CLOUDFRONT_URL}/${ARTIFACT_PATH}"
+          echo "Uploaded ${ARTIFACT_URL}"
+
+          mkdir -p release-metadata
+          jq -n \
+            --arg release_name "$RELEASE_NAME" \
+            --arg version "$RELEASE_TAG" \
+            --arg variant "$VARIANT" \
+            --arg url "$ARTIFACT_URL" \
+            '{release_name: $release_name, version: $version, variant: $variant, distribution: "ubuntu", distribution_version: "26.04", artifacts: [{artifact_url: $url}]}' \
+            > "release-metadata/${VARIANT}_metadata.json"
+
+      - name: Upload metadata artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-metadata-${{ matrix.variant }}
+          path: release-metadata/*.json
+          retention-days: 5
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write       # create GitHub releases
+      pull-requests: write  # comment on PRs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download metadata artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-metadata-*
+          path: release-metadata
+          merge-multiple: true
+
+      - name: Assemble artifact metadata
+        id: assemble
+        env:
+          SCHEMA_URL: https://tachyon-ci.particle.io/schema/artifact_metadata_v1.json
+        run: |
+          set -euo pipefail
+          jq --arg schema_url "$SCHEMA_URL" -s \
+            '{"$schema": $schema_url, "builds": .}' \
+            release-metadata/*_metadata.json > release-metadata/artifact_metadata.json
+
+          RELEASE_NOTES="$(jq -r '.builds[] | "[Download \(.variant) rootfs image from CDN](\(.artifacts[0].artifact_url))"' release-metadata/artifact_metadata.json)"
+          {
+            echo 'notes<<EOF'
+            echo "$RELEASE_NOTES"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          jq -C . release-metadata/artifact_metadata.json
+
+      - name: Create GitHub release
+        if: needs.build.outputs.is_release == 'true' && vars.GHA_CREATE_RELEASE == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.build.outputs.release_tag }}
+          RELEASE_NOTES: ${{ steps.assemble.outputs.notes }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            --target "${{ github.sha }}" \
+            --generate-notes \
+            --notes "$RELEASE_NOTES"
+          gh release upload "$RELEASE_TAG" release-metadata/artifact_metadata.json
+
+      - name: Comment on PR with download links
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **Built `${{ github.sha }}`** (GitHub Actions)
+
+            ${{ steps.assemble.outputs.notes }}

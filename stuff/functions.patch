@@ -1,6 +1,6 @@
---- /usr/share/livecd-rootfs/live-build/functions.orig	2025-12-02 22:08:21.139410658 +0000
-+++ /usr/share/livecd-rootfs/live-build/functions	2025-12-02 22:08:38.196473030 +0000
-@@ -75,7 +75,7 @@
+--- /usr/share/livecd-rootfs/live-build/functions.orig
++++ /usr/share/livecd-rootfs/live-build/functions
+@@ -82,7 +82,7 @@
  make_ext4_partition() {
      device="$1"
      label=${fs_label:+-L "${fs_label}"}

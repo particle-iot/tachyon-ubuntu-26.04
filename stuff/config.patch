@@ -1,6 +1,6 @@
---- /usr/share/livecd-rootfs/live-build/auto/config.orig	2025-12-02 22:08:25.876395188 +0000
-+++ /usr/share/livecd-rootfs/live-build/auto/config	2025-12-02 22:12:04.999799671 +0000
-@@ -786,7 +786,7 @@
+--- /usr/share/livecd-rootfs/live-build/auto/config.orig
++++ /usr/share/livecd-rootfs/live-build/auto/config
+@@ -832,7 +832,7 @@
  						OPTS="${OPTS:+$OPTS }--initramfs=none"
  						OPTS="${OPTS:+$OPTS }--system=normal"
  						OPTS="${OPTS:+$OPTS }--hdd-label=cloudimg-rootfs"
@@ -9,7 +9,7 @@
  						OPTS="${OPTS:+$OPTS }--ext-fudge-factor=15"
  						;;
  					intel-iot)
-@@ -794,7 +794,7 @@
+@@ -840,7 +840,7 @@
  						OPTS="${OPTS:+$OPTS }--initramfs=none"
  						OPTS="${OPTS:+$OPTS }--system=normal"
  						OPTS="${OPTS:+$OPTS }--hdd-label=cloudimg-rootfs"
@@ -18,7 +18,7 @@
  						OPTS="${OPTS:+$OPTS }--ext-fudge-factor=15"
  						;;
  					*)
-@@ -1177,7 +1177,7 @@
+@@ -1272,7 +1272,7 @@
  		esac
  		OPTS="${OPTS:+$OPTS }--system=normal"
  		OPTS="${OPTS:+$OPTS }--hdd-label=cloudimg-rootfs"
@@ -27,7 +27,7 @@
  		OPTS="${OPTS:+$OPTS }--ext-fudge-factor=15"
  		;;
  
-@@ -1509,9 +1509,11 @@
+@@ -1598,9 +1598,11 @@
  			esac
  		fi
  
