@@ -26,13 +26,21 @@ series-portable (TODO: migrate to a `resolute-stable` pocket).
 
 ### Building
 
-The build runs inside a privileged `ubuntu:26.04` container, so any host with
-Docker works (the runner's distro does not need to be 26.04):
+The build runs inside a privileged `ubuntu:26.04` container, so any Linux host
+with Docker works (the runner's distro does not need to be 26.04):
 
 ```bash
 ci-scripts/build.sh headless   # or: desktop
 # → build/rootfs.img.xz
 ```
+
+**Host kernel requirement:** the disk-image stage bind-mounts livecd-rootfs's
+canned AppArmor feature ABI over `…/sys/kernel/security/apparmor/features/`,
+which only exists when the host kernel has AppArmor enabled. Ubuntu hosts and
+GitHub's runners qualify; **Docker Desktop on macOS does not** (LinuxKit kernel,
+no AppArmor) — there the build runs all the way through rootfs construction and
+then fails in `install_grub`, which is still useful for iterating on the
+`stuff/` patches locally.
 
 CI is GitHub Actions (`.github/workflows/build.yml`): builds both variants on
 every push/PR and uploads `tachyon-ubuntu-26.04-<variant>-<tag>.img.xz` to
