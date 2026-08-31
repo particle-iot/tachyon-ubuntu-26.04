@@ -72,6 +72,101 @@ jobs:
           echo "is_release=${IS_RELEASE}"   >> "$GITHUB_OUTPUT"
           echo "Resolved: tag=${RELEASE_TAG} base=${BASE_PATH} release=${IS_RELEASE}"
 
+      # Preflight the AWS OIDC inputs so a missing or malformed secret fails
+      # here with an actionable message instead of surfacing later as an opaque
+      # assume-role error from configure-aws-credentials.
+      #
+      # Values are never logged -- only the name of the offending secret and
+      # what is wrong with it. An unsalted hash of an ARN or a region code is
+      # brute-forceable offline (tiny search space), so digests are not logged
+      # either; inspect the secret in repository settings to see its value.
+      #
+      # Gated on UPLOAD_ASSETS because these secrets are only required when
+      # uploads are enabled; with uploads off they are legitimately unset.
+      - name: Validate AWS credential inputs
+        if: env.UPLOAD_ASSETS == 'true'
+        env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          AWS_REGION_SECRET: ${{ secrets.AWS_REGION }}
+        run: |
+          set -uo pipefail
+
+          # Known AWS region codes across the aws, aws-us-gov and aws-cn
+          # partitions. If AWS adds a region and CI starts rejecting a valid
+          # one, add it here.
+          KNOWN_REGIONS=(
+            us-east-1 us-east-2 us-west-1 us-west-2
+            af-south-1
+            ap-east-1 ap-east-2
+            ap-south-1 ap-south-2
+            ap-northeast-1 ap-northeast-2 ap-northeast-3
+            ap-southeast-1 ap-southeast-2 ap-southeast-3 ap-southeast-4
+            ap-southeast-5 ap-southeast-6 ap-southeast-7
+            ca-central-1 ca-west-1
+            eu-central-1 eu-central-2
+            eu-west-1 eu-west-2 eu-west-3
+            eu-north-1
+            eu-south-1 eu-south-2
+            il-central-1
+            me-central-1 me-south-1
+            mx-central-1
+            sa-east-1
+            us-gov-east-1 us-gov-west-1
+            cn-north-1 cn-northwest-1
+          )
+
+          # IAM role ARN: partition, 12-digit account id, then an optional
+          # /path/ followed by the role name. Deliberately rejects non-role
+          # ARNs such as arn:aws:sts::<acct>:assumed-role/... and the OIDC
+          # provider ARN, which are common mix-ups here.
+          ARN_RE='^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role/([A-Za-z0-9+=,.@_-]+/)*[A-Za-z0-9+=,.@_-]+$'
+
+          errs=0
+          fail() { printf '::error::%s\n' "$1"; errs=$((errs + 1)); }
+
+          # Shared checks: present and free of surrounding whitespace. Returns
+          # non-zero when the value is unusable, so callers skip format checks.
+          check_present() {  # $1=label  $2=value
+            local label="$1" value="$2" trimmed
+            if [[ -z "$value" ]]; then
+              fail "Secret ${label} is empty or not set, but UPLOAD_ASSETS is 'true' so it is required. Add it to the 'production' environment for this repository (environment-scoped secrets are not inherited from repo-level secrets)."
+              return 1
+            fi
+            trimmed="${value#"${value%%[![:space:]]*}"}"
+            trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+            if [[ "$trimmed" != "$value" ]]; then
+              fail "Secret ${label} has leading or trailing whitespace. Re-save it without surrounding spaces or a trailing newline -- the raw value is passed through to AWS, so it cannot be trimmed here."
+              return 1
+            fi
+            return 0
+          }
+
+          if check_present AWS_ROLE_ARN "${ROLE_ARN:-}"; then
+            if [[ ! "$ROLE_ARN" =~ $ARN_RE ]]; then
+              fail "Secret AWS_ROLE_ARN is not a valid IAM role ARN. Expected arn:aws:iam::<12-digit-account-id>:role/<role-name>, where an optional /path/ before the role name is allowed. It must be the IAM role ARN itself -- not an STS assumed-role ARN, not a user ARN, and not the OIDC identity provider ARN."
+            fi
+          fi
+
+          if check_present AWS_REGION "${AWS_REGION_SECRET:-}"; then
+            region_known=false
+            for r in "${KNOWN_REGIONS[@]}"; do
+              if [[ "$AWS_REGION_SECRET" == "$r" ]]; then
+                region_known=true
+                break
+              fi
+            done
+            if [[ "$region_known" != true ]]; then
+              fail "Secret AWS_REGION is not a known AWS region code. Expected a lowercase code such as us-west-2. If AWS has added a region since this step was written, add it to KNOWN_REGIONS in .github/workflows/build.yml."
+            fi
+          fi
+
+          if (( errs > 0 )); then
+            printf '::error::AWS credential validation failed with %d problem(s); see the annotations above. Secret values are intentionally not logged -- inspect them in repository settings.\n' "$errs"
+            exit 1
+          fi
+
+          echo "AWS_ROLE_ARN and AWS_REGION passed validation."
+
       - name: Configure AWS credentials
         if: env.UPLOAD_ASSETS == 'true'
         uses: aws-actions/configure-aws-credentials@v5
