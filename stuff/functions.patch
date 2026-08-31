@@ -1,6 +1,16 @@
 --- /usr/share/livecd-rootfs/live-build/functions.orig
 +++ /usr/share/livecd-rootfs/live-build/functions
-@@ -82,7 +82,7 @@
+@@ -45,6 +45,9 @@
+     local sbom_file_name=${3:-"${base_default_sbom_name}.spdx"}
+     local sbom_document_name=${4:-"${base_default_sbom_name}"}
+     local should_include_sbom=${5:-"true"}
++    # Particle: SBOM generation needs snapd (`snap install cpc-sbom`), which is
++    # unavailable inside the build container, and we do not ship the SBOM.
++    should_include_sbom="false"
+     local sbom_log=${sbom_document_name}.log
+     echo "create_manifest chroot_root: ${chroot_root}"
+     dpkg-query --show --admindir="${chroot_root}/var/lib/dpkg" > ${target_file}
+@@ -82,7 +85,7 @@
  make_ext4_partition() {
      device="$1"
      label=${fs_label:+-L "${fs_label}"}

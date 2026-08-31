@@ -19,7 +19,7 @@ intents carried over unchanged; none had been absorbed upstream).
 | `999-ubuntu-image-customization.chroot.patch` | `.../ubuntu-cpc/hooks.d/chroot/999-ubuntu-image-customization.chroot` | Also take the nocloud-datasource-on-boot-partition path when `IMAGE_TARGETS` contains `non-cloud`, not only when `IMAGEFORMAT=none` — our `disk-image-non-cloud` target needs the same cloud-init seeding. |
 | `config.patch` | `.../live-build/auto/config` | (a) Double `--ext-resize-blocks` (536870912 → ×2) in **all** of its occurrences (3 on resolute) so the rootfs can later be resized to fill the Tachyon system partition; (b) add an `IMAGE_FORCE_HOOKS` escape hatch so binary hooks are kept even when `IMAGEFORMAT=none` logic would remove them. |
 | `disk-image-uefi.patch` | `.../ubuntu-cpc/hooks.d/base/disk-image-uefi.binary` | Bump the amd64/arm64/armhf disk image size 3.5 GiB → 4.5 GiB (our rootfs doesn't fit the stock size). Drop this patch if upstream ever raises the default to ≥ 4.5 GiB. |
-| `functions.patch` | `.../live-build/functions` | Double the ext4 `-E resize=` limit in `make_ext4_partition` (same rationale as config.patch (a) — both places must agree). |
+| `functions.patch` | `.../live-build/functions` | (a) Double the ext4 `-E resize=` limit in `make_ext4_partition` (same rationale as config.patch (a) — both places must agree). (b) Force `should_include_sbom=false` in `create_manifest`: resolute's cpc hooks generate an SPDX SBOM via the `cpc-sbom` snap, which requires snapd — unavailable inside the build container — and we don't ship the SBOM. |
 
 ## Re-deriving against a new livecd-rootfs/live-build
 
