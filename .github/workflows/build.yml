@@ -72,11 +72,6 @@ jobs:
           echo "is_release=${IS_RELEASE}"   >> "$GITHUB_OUTPUT"
           echo "Resolved: tag=${RELEASE_TAG} base=${BASE_PATH} release=${IS_RELEASE}"
 
-      - name: Build rootfs
-        run: |
-          set -euo pipefail
-          bash ci-scripts/build.sh "${{ matrix.variant }}"
-
       - name: Configure AWS credentials
         if: env.UPLOAD_ASSETS == 'true'
         uses: aws-actions/configure-aws-credentials@v5
@@ -84,6 +79,11 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-session-name: tachyon-2604-${{ matrix.variant }}-${{ github.run_id }}
+
+      - name: Build rootfs
+        run: |
+          set -euo pipefail
+          bash ci-scripts/build.sh "${{ matrix.variant }}"
 
       - name: Upload image to S3 and write metadata
         if: env.UPLOAD_ASSETS == 'true'
