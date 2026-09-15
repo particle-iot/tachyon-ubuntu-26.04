@@ -66,6 +66,12 @@ export SUITE=resolute
 export RELEASE_NAME="Ubuntu 26.04 LTS (Resolute Raccoon)"
 export RELEASE_VERSION="26.04"
 export KERNEL_FLAVOR="particle"
+# The base installs the LATEST linux-particle from the noble-stable pocket added
+# below (unpinned, same mechanism as 24.04). ABI is 1058. As of 2026-09-14 that
+# is 6.8.0-1058.59+particle8; this build is cut to pick it up so 26.04's baked
+# kernel matches 24.04 (the previous 29-29469e9 base baked +particle6). The
+# composer pins the exact kernel deb, and check-pinned-packages fails if this
+# base ever drifts from it — so re-cut the base whenever the pinned kernel moves.
 
 export ARCH=arm64
 export IMAGEFORMAT=ext4
